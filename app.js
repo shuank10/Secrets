@@ -16,7 +16,15 @@ const UserSchema = new mongoose.Schema({
   password: String
 });
 
+/////////////for the encryption part-- level 2///////////////
+const secretString = "This is just t do encrytion";
+// You can either use a single secret string of any length; or a pair of base64 strings (a 32-byte encryptionKey and a 64-byte signingKey).
+// right now we are using secret string.
 
+// if we do not specify any particular fiels it will encrypt all the data, which is not good.
+UserSchema.plugin(encrypt,{secret: secretString, encryptedFields: ['password']});
+////////Successfully we have incorporated encrytion!!!!! ////////////////
+//////in mongoose encryption starts at save() and decryption starts at find() ///////////////////
 
 const UserModel = mongoose.model("User",UserSchema);
 
