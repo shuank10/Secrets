@@ -19,7 +19,11 @@ const mongoose = require("mongoose")
 // i.e hash using md5, that is why we're commenting.
 // This is only for level2 and level3.
 
-const md5 = require("md5");
+// const md5 = require("md5"); thsi also we commented for level5 security
+// i.e hashing with salting
+
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 
 const app = express();
 app.use(bodyParser.urlencoded({extended: true}));
@@ -69,28 +73,36 @@ app.get("/login",function(req,res){
 app.get("/register",function(req,res){
   res.render("register");
 });
-console.log(md5(123456));
+// console.log(md5(123456));
 app.post("/register", function(req,res){
-  const user = new UserModel({
-    email: req.body.username,
-    password: md5(req.body.password)
-  });
-  user.save(function(err){
-    if(err){
-      console.log(err);
-    }else{
-      res.render("secrets");
-    }
-  });
+
+  bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+    // Store hash in your password DB.
+    //This function will generate hash with salting.
+    const user = new UserModel({
+      email: req.body.username,
+      // password: md5(req.body.password)
+      password: hash
+    });
+    user.save(function(err){
+      if(err){
+        console.log(err);
+      }else{
+        res.render("secrets");
+      }
+    });
+});
 });
 
 
  // Level 1 security- by just authenticating username and password ///
 //level 4 security - using md5 by just passing it like below //
+//level 5 security- here we're using salting with hashing .
 app.post("/login",function(req,res){
   const loginEmail = req.body.username;
   console.log(loginEmail);
-  const loginPassword = md5(req.body.password);
+  // const loginPassword = md5(req.body.password);
+  const loginPassword = req.body.password;
   console.log(loginPassword);
 
   UserModel.findOne({email: loginEmail},function(err,foundUser){
@@ -98,11 +110,18 @@ app.post("/login",function(req,res){
     console.log(err);
   }else{
     if(foundUser){
-      if(foundUser.password === loginPassword){
-        res.render("secrets");
-      }else{
-        res.send("not found");
-      }
+      bcrypt.compare(loginPassword, foundUser.password, function(err, result) {
+       if(result ===true ){
+         res.render("secrets");
+       }else{
+         res.send("not found");
+       }
+});
+    //   if(foundUser.password === loginPassword){
+    //     res.render("secrets");
+    //   }else{
+    //     res.send("not found");
+    //   }
     }else{
       res.send("not found");
     }
