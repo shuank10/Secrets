@@ -1,3 +1,15 @@
+
+//dotenv//
+//dotenv allows you to separate secrets from your source code.
+// This is useful in a collaborative environment (e.g., work, or open source) where you may not want to share
+// your database login credentials with other people.
+// Instead, you can share the source code while allowing other people to create their own . env file.
+
+// .env is a hidden file, which we need to create in the rot of project folder.
+
+require('dotenv').config();
+
+
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
@@ -17,14 +29,21 @@ const UserSchema = new mongoose.Schema({
 });
 
 /////////////for the encryption part-- level 2///////////////
-const secretString = "This is just t do encrytion";
+// const secretString = "This is just to do encrytion";
 // You can either use a single secret string of any length; or a pair of base64 strings (a 32-byte encryptionKey and a 64-byte signingKey).
 // right now we are using secret string.
 
 // if we do not specify any particular fiels it will encrypt all the data, which is not good.
-UserSchema.plugin(encrypt,{secret: secretString, encryptedFields: ['password']});
+// UserSchema.plugin(encrypt,{secret: secretString, encryptedFields: ['password']});
 ////////Successfully we have incorporated encrytion!!!!! ////////////////
 //////in mongoose encryption starts at save() and decryption starts at find() ///////////////////
+
+//LEVEL 3 encryption --using env variable //
+//We are commenting level 2 encryption method for now //
+console.log(process.env.SECRET_STRING);
+UserSchema.plugin(encrypt,{secret: process.env.SECRET_STRING, encryptedFields:["password"]});
+
+/////////////////////////////////////////////////
 
 const UserModel = mongoose.model("User",UserSchema);
 
