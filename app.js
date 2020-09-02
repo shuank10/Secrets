@@ -14,7 +14,12 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose")
-const encrypt = require("mongoose-encryption");
+
+// const encrypt = require("mongoose-encryption"); -- now we'll use level4 encryption
+// i.e hash using md5, that is why we're commenting.
+// This is only for level2 and level3.
+
+const md5 = require("md5");
 
 const app = express();
 app.use(bodyParser.urlencoded({extended: true}));
@@ -38,10 +43,12 @@ const UserSchema = new mongoose.Schema({
 ////////Successfully we have incorporated encrytion!!!!! ////////////////
 //////in mongoose encryption starts at save() and decryption starts at find() ///////////////////
 
-//LEVEL 3 encryption --using env variable //
+//LEVEL 3 encryption --using env variable //////////////////////////////////////////////////////
 //We are commenting level 2 encryption method for now //
-console.log(process.env.SECRET_STRING);
-UserSchema.plugin(encrypt,{secret: process.env.SECRET_STRING, encryptedFields:["password"]});
+// We'll again comment it for executing level 4 encryption.
+
+// console.log(process.env.SECRET_STRING);
+// UserSchema.plugin(encrypt,{secret: process.env.SECRET_STRING, encryptedFields:["password"]});
 
 /////////////////////////////////////////////////
 
@@ -62,11 +69,11 @@ app.get("/login",function(req,res){
 app.get("/register",function(req,res){
   res.render("register");
 });
-
+console.log(md5(123456));
 app.post("/register", function(req,res){
   const user = new UserModel({
     email: req.body.username,
-    password: req.body.password
+    password: md5(req.body.password)
   });
   user.save(function(err){
     if(err){
@@ -79,11 +86,11 @@ app.post("/register", function(req,res){
 
 
  // Level 1 security- by just authenticating username and password ///
-
+//level 4 security - using md5 by just passing it like below //
 app.post("/login",function(req,res){
   const loginEmail = req.body.username;
   console.log(loginEmail);
-  const loginPassword = req.body.password;
+  const loginPassword = md5(req.body.password);
   console.log(loginPassword);
 
   UserModel.findOne({email: loginEmail},function(err,foundUser){
