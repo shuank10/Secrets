@@ -1,0 +1,36 @@
+1>npm install passport-google-oauth20
+2>we need to go Google Developers Console.
+3>there we need to set up a new project.
+4>After that, we'll go to credentials-> OAuth consent screen.
+5>we can choose inernal.external.
+6>After that we need to provide the app name- (for eg: here Secrets).
+7>there are scopes option is also present
+Add scope
+Scopes are used to grant an application different levels of access on behalf of the end user.
+8>Again we'll go to credentials,
+there we'll add credentials -- OAuth client ID
+9>choose the Application type-- here we'll use web app
+10>Now two options are there-
+a>Authorized JavaScript origins
+The HTTP origins that host your web application.
+This value can't contain wildcards or paths.
+If you use a port other than 80, you must specify it. For example: https://example.com:8080 or
+http://localhost:3000
+b>Authorized redirect URIs
+this will contain the URL, which user will see after getting authenticated by google.
+eg:http://localhost:3000/auth/google/Secrets
+HIT ENTER and CREATE
+
+11>there you'll get a client_ud nad Client_secret
+just copy paste it into your .env file.
+
+12>Now got to your app.js
+
+
+we need to install npm install mongoose-findorcreate
+
+after a the login prompt which you'll get:
+
+you will see Cannot GET /auth/google/secrets
+
+so for this we need to create this route.

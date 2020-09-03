@@ -34,6 +34,11 @@ const passportlocalMongoose = require("passport-local-mongoose");
 //we don't need to require passport-local as it will already incorporated in pasport-local--mongoose. //
 ////////////////////////////////////////////////////////////////////////////////////
 
+/////////////////////////////////Google-OAuth//////////////////////////////////////////////////////////
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const findOrCreate = require('mongoose-findorcreate');
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
 const app = express();
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static("public"));
@@ -57,7 +62,8 @@ app.use(passport.session());
 mongoose.connect("mongodb://localhost:27017/secretsDB", {useNewUrlParser: true});
 const UserSchema = new mongoose.Schema({
   email: String,
-  password: String
+  password: String,
+  googleId: String
 });
 
 
@@ -85,21 +91,63 @@ const UserSchema = new mongoose.Schema({
 
 UserSchema.plugin(passportlocalMongoose);
 ///////////////////////////////////////////////////////////
+/////////////Google-OAuth///////////////
+UserSchema.plugin(findOrCreate);
+///////////////////////////////////////
 const UserModel = mongoose.model("User",UserSchema);
 
 /////////////// step -5   level 6 /////////////////////////////////
 passport.use(UserModel.createStrategy());
 
-passport.serializeUser(UserModel.serializeUser());
-passport.deserializeUser(UserModel.deserializeUser());
+// passport.serializeUser(UserModel.serializeUser());
+// passport.deserializeUser(UserModel.deserializeUser());
+// better to use this passport serialization which will work in all conditions, as the
+//above will fail in google oauth
+passport.serializeUser(function(user, done) {
+  done(null, user.id);
+});
 
+passport.deserializeUser(function(id, done) {
+  UserModel.findById(id, function(err, user) {
+    done(err, user);
+  });
+});
 //////////////////////////////////////////////////////
+
+passport.use(new GoogleStrategy({
+    clientID: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/secrets",
+    userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    console.log(profile);
+    UserModel.findOrCreate({ googleId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
 
 //home//
 app.get("/",function(req,res){
   res.render("home");
 });
 
+///////google-OAuth/////////////////////////////////////////////////////////////////////
+app.get("/auth/google",
+  passport.authenticate('google', { scope: ["profile"] }));
+
+////this one is routing for Cannot GET /auth/google/secrets
+
+
+app.get("/auth/google/secrets",
+  passport.authenticate('google', { failureRedirect: "/login" }),
+  function(req, res) {
+    // Successful authentication, redirect secrets page.
+    res.redirect("/secrets");
+  });
+  /////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
 //login//
 app.get("/login",function(req,res){
   res.render("login");
