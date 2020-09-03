@@ -25,10 +25,33 @@ const mongoose = require("mongoose")
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
 
+///////step -1   level 6 -- now we are using cookies and sessions for authentication ////////
+////for this we need to install these below package //////////////
+
+const session = require("express-session");
+const passport = require("passport");
+const passportlocalMongoose = require("passport-local-mongoose");
+//we don't need to require passport-local as it will already incorporated in pasport-local--mongoose. //
+////////////////////////////////////////////////////////////////////////////////////
+
 const app = express();
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static("public"));
 app.set("view engine", "ejs");
+///////// step -2  level -6 /////////////////////////////////////////////////////////////////////////////////////////////////
+///this session shoule be place here only, that is after all app.uses, and just before the mongosse db connection //
+app.use(session({
+  secret: process.env.SECRET,
+  resave: false,
+ saveUninitialized: true,
+}));
+// step -3 session setup is done///////////////////////////////////////////////////////////////////////////////////////////
+
+app.use(passport.initialize());
+//to initiaize yhe passport//////
+app.use(passport.session());
+//to use passport to set a session///
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 mongoose.connect("mongodb://localhost:27017/secretsDB", {useNewUrlParser: true});
@@ -36,6 +59,8 @@ const UserSchema = new mongoose.Schema({
   email: String,
   password: String
 });
+
+
 
 /////////////for the encryption part-- level 2///////////////
 // const secretString = "This is just to do encrytion";
@@ -56,8 +81,19 @@ const UserSchema = new mongoose.Schema({
 
 /////////////////////////////////////////////////
 
+/////////// step -4  Level 6 - passport and session/cookies //////////
+
+UserSchema.plugin(passportlocalMongoose);
+///////////////////////////////////////////////////////////
 const UserModel = mongoose.model("User",UserSchema);
 
+/////////////// step -5   level 6 /////////////////////////////////
+passport.use(UserModel.createStrategy());
+
+passport.serializeUser(UserModel.serializeUser());
+passport.deserializeUser(UserModel.deserializeUser());
+
+//////////////////////////////////////////////////////
 
 //home//
 app.get("/",function(req,res){
@@ -73,25 +109,55 @@ app.get("/login",function(req,res){
 app.get("/register",function(req,res){
   res.render("register");
 });
+
+app.get("/secrets",function(req,res){
+  if(req.isAuthenticated()){
+    res.render("secrets")
+  }else{
+    res.redirect("/login");
+  }
+});
+
+app.get("/logout",function(req,res){
+  req.logout();
+  res.redirect("/");
+});
+
 // console.log(md5(123456));
 app.post("/register", function(req,res){
 
-  bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
-    // Store hash in your password DB.
-    //This function will generate hash with salting.
-    const user = new UserModel({
-      email: req.body.username,
-      // password: md5(req.body.password)
-      password: hash
+//   bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+//     // Store hash in your password DB.
+//     //This function will generate hash with salting.
+//     const user = new UserModel({
+//       email: req.body.username,
+//       // password: md5(req.body.password)
+//       password: hash
+//     });
+//     user.save(function(err){
+//       if(err){
+//         console.log(err);
+//       }else{
+//         res.render("secrets");
+//       }
+//     });
+// });
+
+///////////////level 6 - handling the request ///////////////////////
+UserModel.register({username: req.body.username},req.body.password,function(err,registeredUser){
+  ///this username should always be thre, don't change /////
+  if(err){
+    console.log(err);
+    res.redirect("/");
+  }else{
+    passport.authenticate("local")(req,res,function(){
+      res.redirect("/secrets");
     });
-    user.save(function(err){
-      if(err){
-        console.log(err);
-      }else{
-        res.render("secrets");
-      }
-    });
+  }
 });
+
+
+
 });
 
 
@@ -99,34 +165,50 @@ app.post("/register", function(req,res){
 //level 4 security - using md5 by just passing it like below //
 //level 5 security- here we're using salting with hashing .
 app.post("/login",function(req,res){
-  const loginEmail = req.body.username;
-  console.log(loginEmail);
-  // const loginPassword = md5(req.body.password);
-  const loginPassword = req.body.password;
-  console.log(loginPassword);
 
-  UserModel.findOne({email: loginEmail},function(err,foundUser){
+
+//   const loginEmail = req.body.username;
+//   console.log(loginEmail);
+//   // const loginPassword = md5(req.body.password);
+//   const loginPassword = req.body.password;
+//   console.log(loginPassword);
+//
+//   UserModel.findOne({email: loginEmail},function(err,foundUser){
+//   if(err){
+//     console.log(err);
+//   }else{
+//     if(foundUser){
+//       bcrypt.compare(loginPassword, foundUser.password, function(err, result) {
+//        if(result ===true ){
+//          res.render("secrets");
+//        }else{
+//          res.send("not found");
+//        }
+// });
+//     //   if(foundUser.password === loginPassword){
+//     //     res.render("secrets");
+//     //   }else{
+//     //     res.send("not found");
+//     //   }
+//     }else{
+//       res.send("not found");
+//     }
+//   }
+//   });
+
+const LoginUser = new UserModel({
+username: req.body.username,
+password: req.body.password
+});
+req.login(LoginUser,function(err){
   if(err){
     console.log(err);
   }else{
-    if(foundUser){
-      bcrypt.compare(loginPassword, foundUser.password, function(err, result) {
-       if(result ===true ){
-         res.render("secrets");
-       }else{
-         res.send("not found");
-       }
-});
-    //   if(foundUser.password === loginPassword){
-    //     res.render("secrets");
-    //   }else{
-    //     res.send("not found");
-    //   }
-    }else{
-      res.send("not found");
-    }
+    passport.authenticate("local")(req,res,function(){
+      res.redirect("/secrets");
+    });
   }
-  });
+});
 });
 
 app.listen("3000",function(){
